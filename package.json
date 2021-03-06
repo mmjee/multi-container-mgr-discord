@@ -1,0 +1,20 @@
+{
+  "name": "container-mgr-discord",
+  "version": "0.0.0",
+  "description": "Discord bot for container management",
+  "main": "index.js",
+  "license": "AGPL-3.0-or-later",
+  "private": false,
+  "dependencies": {
+    "discord-command-parser": "^1.5.3",
+    "discord.js": "^12.5.1",
+    "dockerode": "^3.2.1"
+  },
+  "devDependencies": {
+    "eslint": "^7.21.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.3.1"
+  }
+}
