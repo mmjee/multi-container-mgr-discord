@@ -69,4 +69,4 @@ client.on('message', async msg => {
   }
 })
 
-client.login(process.env.DISCORD_BOT_TOKEN)
+client.login(process.env.DISCORD_BOT_TOKEN).catch(e => console.error(e))
