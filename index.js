@@ -13,36 +13,30 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+const fs = require('fs')
+
 const Discord = require('discord.js')
 const Dockerode = require('dockerode')
 const { parse } = require('discord-command-parser')
-const util = require('util')
+const json5 = require('json5')
 
 const client = new Discord.Client()
-
 const docker = new Dockerode()
 
-const containerId = process.env.DOCKER_CONTAINER_ID
-if (!containerId) {
-  console.error('No container ID found in environment. Please enter a container ID in process.env.DOCKER_CONTAINER_ID')
-  process.exit(11)
-}
-const container = docker.getContainer(containerId)
-const promisifedStart = util.promisify(container.start.bind(container))
-const promisifedStop = util.promisify(container.stop.bind(container))
+const SnowflakeToContainerMap = new Map()
 
-async function handleStart (parsed, msg) {
+async function handleStart (container, parsed, msg) {
   try {
-    await promisifedStart()
+    await container.start()
     await msg.reply('Container started.')
   } catch (e) {
     await msg.reply('Errored with message: ```' + e.message + '```')
   }
 }
 
-async function handleStop (parsed, msg) {
+async function handleStop (container, parsed, msg) {
   try {
-    await promisifedStop()
+    await container.stop()
     await msg.reply('Container stopped.')
   } catch (e) {
     await msg.reply('Errored with message: ```' + e.message + '```')
@@ -56,12 +50,23 @@ client.on('ready', () => {
 client.on('message', async msg => {
   const parsed = parse(msg, process.env.DISCORD_CMD_PREFIX || 'mc', { allowSpaceBeforeCommand: true })
   if (!parsed.success) return
+
+  if (!msg.channel && !msg.channel.id) {
+    await msg.reply("Don't DM the bot.")
+    return
+  }
+  const container = SnowflakeToContainerMap.get(msg.channel.id)
+  if (!container) {
+    await msg.reply('No assigned container, use this in authorized channels only.')
+    return
+  }
+
   switch (parsed.command) {
     case 'start':
-      await handleStart(parsed, msg)
+      await handleStart(container, parsed, msg)
       break
     case 'stop':
-      await handleStop(parsed, msg)
+      await handleStop(container, parsed, msg)
       break
     default:
       await msg.reply('Invalid command. Options are: `start`, `stop`.')
@@ -69,4 +74,12 @@ client.on('message', async msg => {
   }
 })
 
-client.login(process.env.DISCORD_BOT_TOKEN).catch(e => console.error(e))
+async function main () {
+  const config = json5.parse((await fs.promises.readFile(process.env.MCMD_CONFIG_PATH || 'config.json5')).toString())
+  for (const [k, v] of Object.entries(config)) {
+    SnowflakeToContainerMap.set(k, docker.getContainer(v))
+  }
+
+  await client.login(process.env.DISCORD_BOT_TOKEN)
+}
+main().catch(e => console.error(e))
